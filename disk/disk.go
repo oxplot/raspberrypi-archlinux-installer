@@ -6,7 +6,6 @@ import (
 
 type Disk interface {
 	Name() string
-	IsRemovable() bool
 	Size() uint64
 	OpenForWrite() (io.WriteCloser, error)
 }

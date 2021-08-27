@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/oxplot/raspberrypi-archlinux-installer/disk"
@@ -22,6 +24,7 @@ var (
 )
 
 func refreshSDCards() {
+Outer:
 	for {
 		time.Sleep(time.Second)
 		dd, err := disk.Get()
@@ -32,9 +35,17 @@ func refreshSDCards() {
 
 		opts := make([]string, len(dd))
 		for i, d := range dd {
-			opts[i] = d.Name() + time.Now().String()
+			opts[i] = d.Name()
 		}
+		sort.Slice(opts, func(i, j int) bool {
+			return strings.ToLower(opts[i]) < strings.ToLower(opts[j])
+		})
 		sdCards.Options = opts
+		for _, o := range opts {
+			if o == sdCards.Selected {
+				continue Outer
+			}
+		}
 		sdCards.ClearSelected()
 	}
 }

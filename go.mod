@@ -4,6 +4,8 @@ go 1.17
 
 require (
 	fyne.io/fyne/v2 v2.0.4
+	github.com/docker/go-units v0.4.0
+	github.com/godbus/dbus/v5 v5.0.4
 	github.com/jaypipes/ghw v0.8.0
 )
 
@@ -17,7 +19,6 @@ require (
 	github.com/go-gl/gl v0.0.0-20190320180904-bf2b1f2f34d7 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20210410170116-ea3d685f79fb // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
-	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/goki/freetype v0.0.0-20181231101311-fa8a33aabaff // indirect
 	github.com/jaypipes/pcidb v0.6.0 // indirect
 	github.com/mitchellh/go-homedir v1.0.0 // indirect
