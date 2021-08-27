@@ -108,18 +108,18 @@ func main() {
 	})
 	install.Disable()
 
-	wifiName := widget.NewEntry()
-	wifiPassword := widget.NewPasswordEntry()
-	wifiEnable := widget.NewCheck("Enable WiFi", func(checked bool) {
-		if checked {
-			wifiName.Enable()
-			wifiPassword.Enable()
-		} else {
-			wifiName.Disable()
-			wifiPassword.Disable()
+	piName := widget.NewEntry()
+	piName.SetText("alarmpi")
+	piName.Validator = func(s string) error {
+		if strings.TrimSpace(s) == "" {
+			return fmt.Errorf("your Pi must have a non-blank name")
 		}
-	})
-	wifiEnable.OnChanged(false)
+		return nil
+	}
+	wifiName := widget.NewEntry()
+	wifiName.SetPlaceHolder("(optional)")
+	wifiPassword := widget.NewPasswordEntry()
+	wifiPassword.SetPlaceHolder("(optional)")
 
 	sdCards.OnChanged = func(s string) {
 		if s == "" {
@@ -134,8 +134,8 @@ func main() {
 		widget.NewSeparator(),
 		container.NewBorder(nil, nil, widget.NewLabel("SD Card:"), nil, sdCards),
 		widget.NewSeparator(),
-		wifiEnable,
-		container.NewBorder(nil, nil, widget.NewLabel("WiFi Name:"), nil, wifiName),
+		container.NewBorder(nil, nil, widget.NewLabel("Installation Name:"), nil, piName),
+		container.NewBorder(nil, nil, widget.NewLabel("WiFi Network:"), nil, wifiName),
 		container.NewBorder(nil, nil, widget.NewLabel("WiFi Password:"), nil, wifiPassword),
 		widget.NewSeparator(),
 		layout.NewSpacer(),
@@ -143,7 +143,7 @@ func main() {
 	)))
 
 	contentSize := mainWin.Content().Size()
-	mainWin.Resize(fyne.Size{contentSize.Width * 2, contentSize.Height * 2})
+	mainWin.Resize(fyne.Size{contentSize.Width * 2, contentSize.Height * 1.5})
 
 	go refreshSDCards()
 	mainWin.ShowAndRun()
