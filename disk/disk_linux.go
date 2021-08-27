@@ -32,6 +32,17 @@ func (d *udisk) Size() uint64 {
 	return d.size
 }
 
+type udiskWriter struct {
+}
+
+func (w *udiskWriter) Write(b []byte) (int, error) {
+	return 0, nil
+}
+
+func (w *udiskWriter) Close() error {
+	return nil
+}
+
 func (d *udisk) OpenForWrite() (io.WriteCloser, error) {
 	return nil, fmt.Errorf("Not implemented")
 }
@@ -90,6 +101,9 @@ func getDBUSDisks() ([]Disk, error) {
 	conn, err := dbus.SystemBus()
 	if err != nil {
 		return nil, err
+	}
+	if !conn.SupportsUnixFDs() {
+		return nil, fmt.Errorf("DBUS conn does not support Unix FDs")
 	}
 	o := conn.Object("org.freedesktop.UDisks2", dbus.ObjectPath("/org/freedesktop/UDisks2/Manager"))
 	c := o.Call("org.freedesktop.UDisks2.Manager.GetBlockDevices", 0, map[string]dbus.Variant{})
