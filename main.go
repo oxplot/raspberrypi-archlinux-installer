@@ -139,13 +139,18 @@ func main() {
 		}
 	}
 
+	// We only support these for now - will add more in the future
+	rpiModel := widget.NewSelect([]string{"Zero/Zero W"}, nil)
+	rpiModel.SetSelectedIndex(0)
+
 	mainWin.SetContent(container.NewPadded(container.NewVBox(
 		widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		container.NewBorder(nil, nil, widget.NewLabel("Pi Model:"), nil, rpiModel),
 		widget.NewSeparator(),
-		container.NewBorder(nil, nil, widget.NewLabel("Drive:"), nil, diskList),
+		container.NewBorder(nil, nil, widget.NewLabel("Install to:"), nil, diskList),
 		widget.NewLabel(diskNote),
 		widget.NewSeparator(),
-		container.NewBorder(nil, nil, widget.NewLabel("Installation Name:"), nil, piName),
+		container.NewBorder(nil, nil, widget.NewLabel("Pi Name:"), nil, piName),
 		container.NewBorder(nil, nil, widget.NewLabel("WiFi Network:"), nil, wifiName),
 		container.NewBorder(nil, nil, widget.NewLabel("WiFi Password:"), nil, wifiPassword),
 		widget.NewSeparator(),
