@@ -21,11 +21,12 @@ import (
 const (
 	title      = "Raspberry Pi Arch Linux Installer"
 	confirmMsg = "You are about to DESTROY ALL DATA on\n\n%s\n\nThere is no going back.\nAre you sure?"
+	diskNote   = "Only appropriate drives are shown\n(i.e. external with large enough size)"
 )
 
 var (
-	mainWin fyne.Window
-	sdCards = widget.NewSelect(nil, nil)
+	mainWin  fyne.Window
+	diskList = widget.NewSelect(nil, nil)
 
 	disks = struct {
 		mu    sync.Mutex
@@ -33,7 +34,7 @@ var (
 	}{}
 )
 
-func refreshSDCards() {
+func refreshDiskList() {
 Outer:
 	for {
 		time.Sleep(time.Second)
@@ -53,14 +54,14 @@ Outer:
 
 		disks.mu.Lock()
 		disks.items = ds
-		sdCards.Options = names
+		diskList.Options = names
 		for _, o := range names {
-			if o == sdCards.Selected {
+			if o == diskList.Selected {
 				disks.mu.Unlock()
 				continue Outer
 			}
 		}
-		sdCards.ClearSelected()
+		diskList.ClearSelected()
 		disks.mu.Unlock()
 	}
 }
@@ -96,7 +97,7 @@ func main() {
 
 	install := widget.NewButton("Install", func() {
 		disks.mu.Lock()
-		selIdx := sdCards.SelectedIndex()
+		selIdx := diskList.SelectedIndex()
 		if selIdx == -1 {
 			disks.mu.Unlock()
 			return
@@ -130,7 +131,7 @@ func main() {
 	wifiPassword := widget.NewPasswordEntry()
 	wifiPassword.SetPlaceHolder("(optional)")
 
-	sdCards.OnChanged = func(s string) {
+	diskList.OnChanged = func(s string) {
 		if s == "" {
 			install.Disable()
 		} else {
@@ -141,7 +142,8 @@ func main() {
 	mainWin.SetContent(container.NewPadded(container.NewVBox(
 		widget.NewLabelWithStyle(title, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		widget.NewSeparator(),
-		container.NewBorder(nil, nil, widget.NewLabel("SD Card:"), nil, sdCards),
+		container.NewBorder(nil, nil, widget.NewLabel("Drive:"), nil, diskList),
+		widget.NewLabel(diskNote),
 		widget.NewSeparator(),
 		container.NewBorder(nil, nil, widget.NewLabel("Installation Name:"), nil, piName),
 		container.NewBorder(nil, nil, widget.NewLabel("WiFi Network:"), nil, wifiName),
@@ -154,6 +156,6 @@ func main() {
 	contentSize := mainWin.Content().Size()
 	mainWin.Resize(fyne.Size{contentSize.Width * 1.5, contentSize.Height + 50})
 
-	go refreshSDCards()
+	go refreshDiskList()
 	mainWin.ShowAndRun()
 }
