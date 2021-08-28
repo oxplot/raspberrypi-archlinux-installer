@@ -20,7 +20,7 @@ import (
 
 const (
 	title      = "Raspberry Pi Arch Linux Installer"
-	confirmMsg = "You are about to DESTROY ALL DATA on\n\n%s\n\nThere is no going back.\nAre you sure?"
+	confirmMsg = "You are about to DESTROY ALL DATA on\n\n%s\n\nAre you sure?"
 	diskNote   = "Only appropriate drives are shown\n(i.e. external with large enough size)"
 )
 
