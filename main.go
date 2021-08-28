@@ -1,18 +1,13 @@
 package main
 
 import (
-	crand "crypto/rand"
-	_ "embed"
 	"fmt"
+	"io"
 	"log"
-	mrand "math/rand"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/oxplot/raspberrypi-archlinux-installer/disk"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -20,6 +15,8 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+
+	"github.com/oxplot/raspberrypi-archlinux-installer/disk"
 )
 
 const (
@@ -27,16 +24,9 @@ const (
 	confirmMsg   = "You are about to DESTROY ALL DATA on\n\n%s\n\nAre you sure?"
 	diskNote     = "Only appropriate drives are shown\n(i.e. external with large enough size)"
 	minDriveSize = 2_097_152_000 // uncompressed size of blank_img.xz
-	bufSize      = 0x100_000
-	bootUUIDLen  = 4
-	rootUUIDLen  = 16
 )
 
 var (
-	// `xz -d < blank_img.xz | hexdump -C | less` to find these
-	bootUUIDPat = regexp.MustCompile(`(\x00)\x29\x0c\x4f\x4b(\x95\x50\x49\x42\x4f\x4f\x54\x20\x20\x20\x20\x20)`)
-	rootUUIDPat = regexp.MustCompile(`\x37\x31\x04\xbf\xbd\xed\x42\xb2\x87\xe0\x63\x2b\x07\x25\xe6\xa7`)
-
 	mainWin  fyne.Window
 	diskList = widget.NewSelect(nil, nil)
 
@@ -44,19 +34,7 @@ var (
 		mu    sync.Mutex
 		items []disk.Disk
 	}{}
-
-	//go:embed arch_img.xz
-	archImg []byte
 )
-
-func genUUID(length int) []byte {
-	b := make([]byte, length)
-	if _, err := crand.Read(b); err != nil {
-		mrand.Seed(time.Now().Unix())
-		_, _ = mrand.Read(b)
-	}
-	return b
-}
 
 func refreshDiskList() {
 Outer:
@@ -101,7 +79,7 @@ Outer:
 }
 
 func install(d disk.Disk) error {
-	cancelled := make(chan bool)
+	cancelled := make(chan struct{})
 	prog := widget.NewProgressBar()
 	prog.Min, prog.Max = 0, 100
 	progDiag := dialog.NewCustom("Installing", "Cancel", prog, mainWin)
@@ -117,11 +95,25 @@ func install(d disk.Disk) error {
 	}
 	defer w.Close()
 
-	if _, err := w.Write([]byte("luck")); err != nil {
-		return err
+	copyErr := make(chan error)
+
+	r := newArchImgReader()
+	go func() {
+		if _, err := io.Copy(w, r); err != nil {
+			copyErr <- err
+			return
+		}
+		copyErr <- nil
+	}()
+
+	select {
+	case <-cancelled:
+	case err := <-copyErr:
+		if err != nil {
+			return err
+		}
 	}
 
-	<-cancelled
 	return nil
 }
 

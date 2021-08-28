@@ -7,6 +7,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/godbus/dbus/v5 v5.0.4
 	github.com/jaypipes/ghw v0.8.0
+	github.com/ulikunitz/xz v0.5.10
 )
 
 require (
