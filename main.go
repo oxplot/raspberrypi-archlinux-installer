@@ -75,9 +75,18 @@ func install(d disk.Disk) error {
 	})
 	progDiag.Show()
 
-	<-cancelled
+	w, err := d.OpenForWrite()
+	if err != nil {
+		progDiag.Hide()
+		return err
+	}
+	defer w.Close()
+	if _, err := w.Write([]byte("luck")); err != nil {
+		return err
+	}
 
-	return fmt.Errorf("shit went to hell")
+	<-cancelled
+	return nil
 }
 
 func main() {
@@ -143,7 +152,7 @@ func main() {
 	)))
 
 	contentSize := mainWin.Content().Size()
-	mainWin.Resize(fyne.Size{contentSize.Width * 2, contentSize.Height * 1.5})
+	mainWin.Resize(fyne.Size{contentSize.Width * 1.5, contentSize.Height + 50})
 
 	go refreshSDCards()
 	mainWin.ShowAndRun()

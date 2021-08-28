@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/docker/go-units"
@@ -33,18 +34,32 @@ func (d *udisk) Size() uint64 {
 }
 
 type udiskWriter struct {
+	f *os.File
 }
 
 func (w *udiskWriter) Write(b []byte) (int, error) {
-	return 0, nil
+	return w.f.Write(b)
 }
 
 func (w *udiskWriter) Close() error {
-	return nil
+	return w.f.Close()
 }
 
 func (d *udisk) OpenForWrite() (io.WriteCloser, error) {
-	return nil, fmt.Errorf("Not implemented")
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		return nil, err
+	}
+	o := conn.Object("org.freedesktop.UDisks2", dbus.ObjectPath(d.path))
+	c := o.Call("org.freedesktop.UDisks2.Block.OpenForRestore", 0, map[string]dbus.Variant{})
+	if c.Err != nil {
+		return nil, c.Err
+	}
+	var fd dbus.UnixFD
+	if err := c.Store(&fd); err != nil {
+		return nil, err
+	}
+	return &udiskWriter{os.NewFile(uintptr(fd), "")}, nil
 }
 
 func getUDisksProp(path, prop string) (interface{}, error) {
