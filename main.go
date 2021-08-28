@@ -1,8 +1,12 @@
 package main
 
 import (
+	crand "crypto/rand"
+	_ "embed"
 	"fmt"
 	"log"
+	mrand "math/rand"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -19,12 +23,20 @@ import (
 )
 
 const (
-	title      = "Raspberry Pi Arch Linux Installer"
-	confirmMsg = "You are about to DESTROY ALL DATA on\n\n%s\n\nAre you sure?"
-	diskNote   = "Only appropriate drives are shown\n(i.e. external with large enough size)"
+	title        = "Raspberry Pi Arch Linux Installer"
+	confirmMsg   = "You are about to DESTROY ALL DATA on\n\n%s\n\nAre you sure?"
+	diskNote     = "Only appropriate drives are shown\n(i.e. external with large enough size)"
+	minDriveSize = 2_097_152_000 // uncompressed size of blank_img.xz
+	bufSize      = 0x100_000
+	bootUUIDLen  = 4
+	rootUUIDLen  = 16
 )
 
 var (
+	// `xz -d < blank_img.xz | hexdump -C | less` to find these
+	bootUUIDPat = regexp.MustCompile(`(\x00)\x29\x0c\x4f\x4b(\x95\x50\x49\x42\x4f\x4f\x54\x20\x20\x20\x20\x20)`)
+	rootUUIDPat = regexp.MustCompile(`\x37\x31\x04\xbf\xbd\xed\x42\xb2\x87\xe0\x63\x2b\x07\x25\xe6\xa7`)
+
 	mainWin  fyne.Window
 	diskList = widget.NewSelect(nil, nil)
 
@@ -32,7 +44,19 @@ var (
 		mu    sync.Mutex
 		items []disk.Disk
 	}{}
+
+	//go:embed arch_img.xz
+	archImg []byte
 )
+
+func genUUID(length int) []byte {
+	b := make([]byte, length)
+	if _, err := crand.Read(b); err != nil {
+		mrand.Seed(time.Now().Unix())
+		_, _ = mrand.Read(b)
+	}
+	return b
+}
 
 func refreshDiskList() {
 Outer:
@@ -43,6 +67,16 @@ Outer:
 		if err != nil {
 			log.Printf("error: cannot get list of disks: %s", err)
 		}
+
+		// Filter small drives
+		n := 0
+		for _, d := range ds {
+			if d.Size() >= minDriveSize {
+				ds[n] = d
+				n++
+			}
+		}
+		ds = ds[:n]
 
 		sort.Slice(ds, func(i, j int) bool {
 			return strings.ToLower(ds[i].Name()) < strings.ToLower(ds[j].Name())
@@ -82,6 +116,7 @@ func install(d disk.Disk) error {
 		return err
 	}
 	defer w.Close()
+
 	if _, err := w.Write([]byte("luck")); err != nil {
 		return err
 	}
