@@ -42,8 +42,13 @@ _arch() {
 
 _arch pacman-key --config /piroot/etc/pacman.conf --gpgdir /piroot/etc/pacman.d/gnupg/ --init 
 _arch pacman-key --config /piroot/etc/pacman.conf --gpgdir /piroot/etc/pacman.d/gnupg/ --populate archlinuxarm
-_arch pacman -r /piroot --arch armv6h --gpgdir /piroot/etc/pacman.d/gnupg/ --config /piroot/etc/pacman.conf --cachedir /tmp --dbpath /piroot/var/lib/pacman/ -Sy
-_arch pacman -r /piroot --arch armv6h --gpgdir /piroot/etc/pacman.d/gnupg/ --config /piroot/etc/pacman.conf --cachedir /tmp --dbpath /piroot/var/lib/pacman/ -S xfsprogs --noconfirm
+_arch pacman -r /piroot --arch armv6h --dbpath /piroot/var/lib/pacman/ \
+  --gpgdir /piroot/etc/pacman.d/gnupg/ --config /piroot/etc/pacman.conf --cachedir /tmp \
+  -Sy xfsprogs --noconfirm || true
+
+cp rpi-installer-first-boot.service root/etc/systemd/system
+ln -s ../rpi-installer-first-boot.service root/etc/systemd/system/multi-user.target.wants/
+cp rpi-installer-first-boot.sh root/opt
 
 umount root boot
 rmdir root boot

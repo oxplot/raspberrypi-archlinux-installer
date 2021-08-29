@@ -42,6 +42,11 @@ func (w *udiskWriter) Write(b []byte) (int, error) {
 }
 
 func (w *udiskWriter) Close() error {
+	err := w.f.Sync()
+	if err != nil {
+		_ = w.f.Close()
+		return err
+	}
 	return w.f.Close()
 }
 

@@ -7,12 +7,12 @@ cd "${_tmp_path}"
 
 # Extract installer config files
 _arch_img_size=1887436800
-tail -c +$(( 1 + _arch_img_size )) /dev/mmcblk0 | tar -x # tar ignores garbage at the end
+(tail -c +$(( 1 + _arch_img_size )) /dev/mmcblk0 || true) | tar -x # tar ignores garbage at the end
 
 # Grow the root partition
 echo ", +" | sfdisk --force -N 2 /dev/mmcblk0
 partx -u /dev/mmcblk0
-xfs_grow -d /
+xfs_growfs -d /
 
 # Set hostname
 hostnamectl set-hostname "$(cat hostname)"
@@ -38,7 +38,7 @@ EOF
   cat <<EOF > "${_wpa_supp_path}"
 ap_scan=1
 fast_reauth=1
-country=$(cat wifi_country)
+country=AU
 network={
  ssid="$(cat wifi_ssid)"
 EOF

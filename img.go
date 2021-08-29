@@ -56,7 +56,7 @@ type imgConfig struct {
 }
 
 func calcWifiPSK(ssid, password string) string {
-	return hex.EncodeToString(pbkdf2.Key([]byte(password), []byte(ssid), 4096, 256, sha1.New))
+	return hex.EncodeToString(pbkdf2.Key([]byte(password), []byte(ssid), 4096, 32, sha1.New))
 }
 
 func writeTarFile(w *tar.Writer, name string, content []byte) error {
