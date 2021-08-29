@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	imgSize    = 2097152000 // uncompressed size of blank_img.xz
+	imgSize    = 1572864000 // uncompressed size of blank_img.xz
 	configSize = 1000000    // length of trailing config tar
 )
 
