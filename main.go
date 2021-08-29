@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -15,15 +16,15 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/machinebox/progress"
 
 	"github.com/oxplot/raspberrypi-archlinux-installer/disk"
 )
 
 const (
-	title        = "Raspberry Pi Arch Linux Installer"
-	confirmMsg   = "You are about to DESTROY ALL DATA on\n\n%s\n\nAre you sure?"
-	diskNote     = "Only appropriate drives are shown\n(i.e. external with large enough size)"
-	minDriveSize = 2_097_152_000 // uncompressed size of blank_img.xz
+	title      = "Raspberry Pi Arch Linux Installer"
+	confirmMsg = "You are about to DESTROY ALL DATA on\n\n%s\n\nAre you sure?"
+	diskNote   = "Only appropriate drives are shown\n(i.e. external with large enough size)"
 )
 
 var (
@@ -49,7 +50,7 @@ Outer:
 		// Filter small drives
 		n := 0
 		for _, d := range ds {
-			if d.Size() >= minDriveSize {
+			if d.Size() >= imgSize {
 				ds[n] = d
 				n++
 			}
@@ -78,43 +79,62 @@ Outer:
 	}
 }
 
-func install(d disk.Disk) error {
-	cancelled := make(chan struct{})
+func installImg(d disk.Disk) error {
+	ctx, cancel := context.WithCancel(context.Background())
 	prog := widget.NewProgressBar()
 	prog.Min, prog.Max = 0, 100
 	progDiag := dialog.NewCustom("Installing", "Cancel", prog, mainWin)
 	progDiag.SetOnClosed(func() {
-		close(cancelled)
+		cancel()
 	})
 	progDiag.Show()
 
 	w, err := d.OpenForWrite()
 	if err != nil {
-		progDiag.Hide()
 		return err
 	}
-	defer w.Close()
 
-	copyErr := make(chan error)
+	progW := progress.NewWriter(w)
+	progCtx, progCancel := context.WithCancel(context.Background())
+	defer progCancel()
+	tkrC := progress.NewTicker(progCtx, progW, imgSize, time.Millisecond*500)
 
 	r := newArchImgReader()
-	go func() {
-		if _, err := io.Copy(w, r); err != nil {
-			copyErr <- err
-			return
-		}
-		copyErr <- nil
+	defer func() {
+		_ = r.Close()
 	}()
 
-	select {
-	case <-cancelled:
-	case err := <-copyErr:
-		if err != nil {
+	copyErr := make(chan error)
+	go func() {
+		_, err := io.Copy(progW, r)
+		copyErr <- err
+		close(copyErr)
+	}()
+
+	for {
+		select {
+
+		case p := <-tkrC:
+			prog.SetValue(p.Percent())
+
+		case <-ctx.Done():
+			dia := dialog.NewInformation("Cancelling", "Cancelling ...", mainWin)
+			dia.Show()
+			_ = w.Close()
+			<-copyErr
+			dia.Hide()
+			return fmt.Errorf("Cancelled!")
+
+		case err := <-copyErr:
+			cErr := w.Close()
+			progDiag.Hide()
+			// Return the first error that was encountered
+			if err == nil {
+				return cErr
+			}
 			return err
 		}
 	}
-
-	return nil
 }
 
 func main() {
@@ -137,9 +157,13 @@ func main() {
 				return
 			}
 			go func() {
-				if err := install(d); err != nil {
-					dialog.ShowInformation("Error", err.Error(), mainWin)
+				mainWin.Content().Hide()
+				if err := installImg(d); err != nil {
+					dialog.ShowError(err, mainWin)
+				} else {
+					dialog.ShowInformation("Success", "Done!", mainWin)
 				}
+				mainWin.Content().Show()
 			}()
 		}, mainWin)
 	})

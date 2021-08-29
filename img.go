@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bytes"
 	crand "crypto/rand"
-	_ "embed"
+	"embed"
 	"io"
+	"io/fs"
 	mrand "math/rand"
 	"regexp"
 	"time"
@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	imgSize          = 2_097_152_000 // uncompressed size of blank_img.xz
 	imgReadBlockSize = 0x100_000
 	bootUUIDLen      = 4
 	rootUUIDLen      = 16
@@ -25,10 +26,12 @@ type archImgReader struct {
 	curBlock        []byte
 	bytePos         int
 	xzReader        io.Reader
+	file            fs.File
 }
 
 func newArchImgReader() *archImgReader {
-	r, err := xz.NewReader(bytes.NewReader(archImg))
+	f, _ := files.Open("arch_img.xz")
+	r, err := xz.NewReader(f)
 	if err != nil {
 		panic(err)
 	}
@@ -36,11 +39,16 @@ func newArchImgReader() *archImgReader {
 		bootUUID: genUUID(bootUUIDLen),
 		rootUUID: genUUID(rootUUIDLen),
 		xzReader: r,
+		file:     f,
 	}
 }
 
 func (a *archImgReader) Read(b []byte) (int, error) {
 	return a.xzReader.Read(b)
+}
+
+func (a *archImgReader) Close() error {
+	return a.file.Close()
 }
 
 var (
@@ -49,7 +57,7 @@ var (
 	rootUUIDPat = regexp.MustCompile(`\x37\x31\x04\xbf\xbd\xed\x42\xb2\x87\xe0\x63\x2b\x07\x25\xe6\xa7`)
 
 	//go:embed arch_img.xz
-	archImg []byte
+	files embed.FS
 )
 
 func genUUID(length int) []byte {

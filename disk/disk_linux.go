@@ -51,7 +51,7 @@ func (d *udisk) OpenForWrite() (io.WriteCloser, error) {
 		return nil, err
 	}
 	o := conn.Object("org.freedesktop.UDisks2", dbus.ObjectPath(d.path))
-	c := o.Call("org.freedesktop.UDisks2.Block.OpenForRestore", 0, map[string]dbus.Variant{})
+	c := o.Call("org.freedesktop.UDisks2.Block.OpenDevice", 0, "w", map[string]dbus.Variant{})
 	if c.Err != nil {
 		return nil, c.Err
 	}
