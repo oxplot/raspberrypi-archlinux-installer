@@ -6,7 +6,7 @@ mkdir -p "${_tmp_path}"
 cd "${_tmp_path}"
 
 # Extract installer config files
-_arch_img_size=1572864000
+_arch_img_size=1887436800
 tail -c +$(( 1 + _arch_img_size )) /dev/mmcblk0 | tar -x # tar ignores garbage at the end
 
 # Grow the root partition

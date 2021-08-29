@@ -1,6 +1,6 @@
 ## Blank Image
 
-1. `dd if=/dev/zero of=blank_img bs=1M count=1500`
+1. `dd if=/dev/zero of=blank_img bs=1M count=1800`
 2. `losetup --find --show blank_img`
 3. Follow the `fdisk` part of https://archlinuxarm.org/platforms/armv6/raspberry-pi
 
@@ -16,13 +16,14 @@
 4. `partprobe /dev/loop0`
 5. `mkfs.vfat /dev/loop0p1`
 6. `mkfs.xfs -m reflink=1 /dev/loop0p2`
+7. `losetup --detach /dev/loop0`
 7. Double compress the image: `xz < blank_img | xz > blank_img.xz.xz`
 
 ## OS
 
 ```
-xz -d < blank_img.xz > blank_img
-losetup --find --show blank_img
+xz -d < blank_img.xz.xz | xz -d > arch_img
+losetup --find --show arch_img
 mkdir root boot
 mount /dev/loop0p1 boot
 mount /dev/loop0p2 root
@@ -47,5 +48,5 @@ _arch pacman -r /piroot --arch armv6h --gpgdir /piroot/etc/pacman.d/gnupg/ --con
 umount root boot
 rmdir root boot
 losetup --detach /dev/loop0
-xz < blank_img > arch_img.xz
+xz < arch_img > arch_img.xz
 ```
