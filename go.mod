@@ -8,6 +8,7 @@ require (
 	github.com/godbus/dbus/v5 v5.0.4
 	github.com/machinebox/progress v0.2.0
 	github.com/ulikunitz/xz v0.5.10
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 )
 
 require (

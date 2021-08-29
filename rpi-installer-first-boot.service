@@ -1,0 +1,11 @@
+[Unit]
+Description=Raspberry Pi Installer First Boot
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/rpi-installer-first-boot.sh
+User=root
+
+[Install]
+WantedBy=multi-user.target

@@ -1,32 +1,32 @@
 package main
 
 import (
-	crand "crypto/rand"
+	"archive/tar"
+	"crypto/sha1"
 	"embed"
+	"encoding/hex"
 	"io"
 	"io/fs"
-	mrand "math/rand"
-	"regexp"
-	"time"
 
 	"github.com/ulikunitz/xz"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 const (
-	imgSize          = 2_097_152_000 // uncompressed size of blank_img.xz
-	imgReadBlockSize = 0x100_000
-	bootUUIDLen      = 4
-	rootUUIDLen      = 16
+	imgSize    = 2097152000 // uncompressed size of blank_img.xz
+	configSize = 1000000    // length of trailing config tar
+)
+
+var (
+	//go:embed arch_img.xz
+	files embed.FS
 )
 
 type archImgReader struct {
-	bootUUID        []byte
-	patchedBootUUID bool
-	rootUUID        []byte
-	curBlock        []byte
-	bytePos         int
-	xzReader        io.Reader
-	file            fs.File
+	curBlock []byte
+	bytePos  int
+	xzReader io.Reader
+	file     fs.File
 }
 
 func newArchImgReader() *archImgReader {
@@ -36,8 +36,6 @@ func newArchImgReader() *archImgReader {
 		panic(err)
 	}
 	return &archImgReader{
-		bootUUID: genUUID(bootUUIDLen),
-		rootUUID: genUUID(rootUUIDLen),
 		xzReader: r,
 		file:     f,
 	}
@@ -51,20 +49,57 @@ func (a *archImgReader) Close() error {
 	return a.file.Close()
 }
 
-var (
-	// `xz -d < blank_img.xz | hexdump -C | less` to find these
-	bootUUIDPat = regexp.MustCompile(`(\x00)\x29\x0c\x4f\x4b(\x95\x50\x49\x42\x4f\x4f\x54\x20\x20\x20\x20\x20)`)
-	rootUUIDPat = regexp.MustCompile(`\x37\x31\x04\xbf\xbd\xed\x42\xb2\x87\xe0\x63\x2b\x07\x25\xe6\xa7`)
+type imgConfig struct {
+	wifiSSID     string
+	wifiPassword string
+	hostname     string
+}
 
-	//go:embed arch_img.xz
-	files embed.FS
-)
+func calcWifiPSK(ssid, password string) string {
+	return hex.EncodeToString(pbkdf2.Key([]byte(password), []byte(ssid), 4096, 256, sha1.New))
+}
 
-func genUUID(length int) []byte {
-	b := make([]byte, length)
-	if _, err := crand.Read(b); err != nil {
-		mrand.Seed(time.Now().Unix())
-		_, _ = mrand.Read(b)
+func writeTarFile(w *tar.Writer, name string, content []byte) error {
+	if err := w.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeReg,
+		Name:     name,
+		Size:     int64(len(content)),
+		Mode:     0666,
+	}); err != nil {
+		return err
 	}
-	return b
+	if _, err := w.Write(content); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c imgConfig) writeTo(w io.Writer) error {
+	tw := tar.NewWriter(w)
+	if err := writeTarFile(tw, "hostname", []byte(c.hostname)); err != nil {
+		return err
+	}
+
+	if len(c.wifiSSID) > 0 {
+
+		if err := writeTarFile(tw, "wifi_ssid", []byte(c.wifiSSID)); err != nil {
+			return err
+		}
+
+		if len(c.wifiPassword) > 0 {
+			psk := calcWifiPSK(c.wifiSSID, c.wifiPassword)
+			if err := writeTarFile(tw, "wifi_psk", []byte(psk)); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	tw.Flush()
+	buf := make([]byte, 4096)
+	if _, err := w.Write(buf); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -50,7 +50,7 @@ Outer:
 		// Filter small drives
 		n := 0
 		for _, d := range ds {
-			if d.Size() >= imgSize {
+			if d.Size() >= imgSize+configSize {
 				ds[n] = d
 				n++
 			}
@@ -79,7 +79,7 @@ Outer:
 	}
 }
 
-func installImg(d disk.Disk) error {
+func installImg(d disk.Disk, cfg imgConfig) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	prog := widget.NewProgressBar()
 	prog.Min, prog.Max = 0, 100
@@ -106,9 +106,15 @@ func installImg(d disk.Disk) error {
 
 	copyErr := make(chan error)
 	go func() {
+		defer func() {
+			copyErr <- err
+			close(copyErr)
+		}()
 		_, err := io.Copy(progW, r)
-		copyErr <- err
-		close(copyErr)
+		if err != nil {
+			return
+		}
+		err = cfg.writeTo(progW)
 	}()
 
 	for {
@@ -142,6 +148,19 @@ func main() {
 	a := app.New()
 	mainWin = a.NewWindow(title)
 
+	piName := widget.NewEntry()
+	piName.SetText("alarmpi")
+	piName.Validator = func(s string) error {
+		if strings.TrimSpace(s) == "" {
+			return fmt.Errorf("your Pi must have a non-blank name")
+		}
+		return nil
+	}
+	wifiName := widget.NewEntry()
+	wifiName.SetPlaceHolder("(optional)")
+	wifiPassword := widget.NewPasswordEntry()
+	wifiPassword.SetPlaceHolder("(optional)")
+
 	install := widget.NewButton("Install", func() {
 		disks.mu.Lock()
 		selIdx := diskList.SelectedIndex()
@@ -158,7 +177,12 @@ func main() {
 			}
 			go func() {
 				mainWin.Content().Hide()
-				if err := installImg(d); err != nil {
+				cfg := imgConfig{
+					hostname:     piName.Text,
+					wifiSSID:     wifiName.Text,
+					wifiPassword: wifiPassword.Text,
+				}
+				if err := installImg(d, cfg); err != nil {
 					dialog.ShowError(err, mainWin)
 				} else {
 					dialog.ShowInformation("Success", "Done!", mainWin)
@@ -168,19 +192,6 @@ func main() {
 		}, mainWin)
 	})
 	install.Disable()
-
-	piName := widget.NewEntry()
-	piName.SetText("alarmpi")
-	piName.Validator = func(s string) error {
-		if strings.TrimSpace(s) == "" {
-			return fmt.Errorf("your Pi must have a non-blank name")
-		}
-		return nil
-	}
-	wifiName := widget.NewEntry()
-	wifiName.SetPlaceHolder("(optional)")
-	wifiPassword := widget.NewPasswordEntry()
-	wifiPassword.SetPlaceHolder("(optional)")
 
 	diskList.OnChanged = func(s string) {
 		if s == "" {
