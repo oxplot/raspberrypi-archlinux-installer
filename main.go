@@ -10,19 +10,19 @@ const (
 )
 
 var (
-	cliMode   = flag.Bool("cli", false, "run in interactive command line mode")
-	batchMode = flag.Bool("batch", false, "run in batch mode - good for scripting")
+	interactiveMode = flag.Bool("interactive", false, "run in interactive command line mode")
+	batchMode       = flag.Bool("batch", false, "run in batch mode - good for scripting")
 )
 
 func main() {
 	log.SetFlags(0)
 	flag.Parse()
-	if *cliMode && *batchMode {
-		log.Fatal("only one of --cli and --batch can be specified, not both")
+	if *interactiveMode && *batchMode {
+		log.Fatal("only one of --interactive and --batch can be specified, not both")
 	}
 	var err error
-	if *cliMode {
-		err = runInCLIMode()
+	if *interactiveMode {
+		err = runInInteractiveMode()
 	} else if *batchMode {
 		err = runInBatchMode()
 	} else {

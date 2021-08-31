@@ -2,6 +2,6 @@ package main
 
 import ()
 
-func runInCLIMode() error {
+func runInInteractiveMode() error {
 	return nil
 }
