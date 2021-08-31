@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/docker/go-units"
+	"github.com/mattn/go-isatty"
+	"github.com/schollz/progressbar/v3"
 
 	"github.com/oxplot/raspberrypi-archlinux-installer/disk"
 )
@@ -79,5 +83,39 @@ func runInBatchMode() error {
 			*batchFlags.drivePath)
 	}
 
-	return nil
+	cfg := imgConfig{
+		hostname:     *batchFlags.piName,
+		wifiSSID:     *batchFlags.wifiNetwork,
+		wifiPassword: os.Getenv("RAI_WIFI_PASSWORD"),
+	}
+
+	if isatty.IsTerminal(os.Stderr.Fd()) {
+
+		prog := progressbar.Default(100)
+		err = installImg(context.Background(), td, cfg, func(percent float64) {
+			prog.Set(int(percent))
+		})
+
+	} else {
+
+		fmt.Fprint(os.Stderr, "Installing ... ")
+		progChan := make(chan float64)
+		go func() {
+			tenperc := 0
+			for p := range progChan {
+				pi := int(p) / 10
+				if pi > tenperc {
+					fmt.Fprintf(os.Stderr, "%d0%% ", pi)
+					tenperc = pi
+				}
+			}
+		}()
+		err = installImg(context.Background(), td, cfg, func(percent float64) {
+			progChan <- percent
+		})
+		close(progChan)
+		fmt.Fprint(os.Stderr, "\n")
+
+	}
+	return err
 }

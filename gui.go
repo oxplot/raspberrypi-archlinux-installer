@@ -87,6 +87,7 @@ func installImgWithGUI(d disk.Disk, cfg imgConfig) error {
 	err := installImg(ctx, d, cfg, func(percent float64) {
 		prog.SetValue(percent)
 	})
+	progDiag.Hide()
 	cancelling.Hide()
 	return err
 }
