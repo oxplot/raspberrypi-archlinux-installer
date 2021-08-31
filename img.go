@@ -2,14 +2,20 @@ package main
 
 import (
 	"archive/tar"
+	"context"
 	"crypto/sha1"
 	"embed"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"io/fs"
+	"time"
 
+	"github.com/machinebox/progress"
 	"github.com/ulikunitz/xz"
 	"golang.org/x/crypto/pbkdf2"
+
+	"github.com/oxplot/raspberrypi-archlinux-installer/disk"
 )
 
 const (
@@ -102,4 +108,55 @@ func (c imgConfig) writeTo(w io.Writer) error {
 	}
 
 	return nil
+}
+
+func installImg(ctx context.Context, d disk.Disk, cfg imgConfig, progressUpdate func(percent float64)) error {
+	w, err := d.OpenForWrite()
+	if err != nil {
+		return err
+	}
+
+	progW := progress.NewWriter(w)
+	progCtx, progCancel := context.WithCancel(ctx)
+	defer progCancel()
+	tkrC := progress.NewTicker(progCtx, progW, imgSize, time.Millisecond*500)
+
+	r := newArchImgReader()
+	defer func() {
+		_ = r.Close()
+	}()
+
+	copyErr := make(chan error)
+	go func() {
+		defer func() {
+			copyErr <- err
+			close(copyErr)
+		}()
+		_, err := io.Copy(progW, r)
+		if err != nil {
+			return
+		}
+		err = cfg.writeTo(progW)
+	}()
+
+	for {
+		select {
+
+		case p := <-tkrC:
+			progressUpdate(p.Percent())
+
+		case <-ctx.Done():
+			_ = w.Close()
+			<-copyErr
+			return fmt.Errorf("Cancelled!")
+
+		case err := <-copyErr:
+			cErr := w.Close()
+			// Return the first error that was encountered
+			if err == nil {
+				return cErr
+			}
+			return err
+		}
+	}
 }

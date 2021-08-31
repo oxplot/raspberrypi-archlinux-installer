@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/docker/go-units"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -20,9 +19,14 @@ func nativeGet() (disks []Disk, err error) {
 }
 
 type udisk struct {
+	dev  string
 	path string
 	name string
 	size uint64
+}
+
+func (d *udisk) Path() string {
+	return "udisk" + d.dev
 }
 
 func (d *udisk) Name() string {
@@ -163,8 +167,8 @@ Outer:
 			log.Print(err)
 			continue
 		}
-		name := fmt.Sprintf("%s %s (%s)", model, units.BytesSize(float64(size)), devFile)
-		disks = append(disks, &udisk{path: b, name: name, size: size})
+		name := model
+		disks = append(disks, &udisk{dev: devFile, path: b, name: name, size: size})
 	}
 	return disks, nil
 }

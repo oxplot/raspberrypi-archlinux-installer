@@ -5,6 +5,7 @@ import (
 )
 
 type Disk interface {
+	Path() string
 	Name() string
 	Size() uint64
 	OpenForWrite() (io.WriteCloser, error)
