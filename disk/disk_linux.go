@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -35,6 +36,10 @@ func (d *udisk) Name() string {
 
 func (d *udisk) Size() uint64 {
 	return d.size
+}
+
+func (d *udisk) String() string {
+	return fmt.Sprintf("%s %s (%s)", d.name, units.BytesSize(float64(d.size)), d.dev)
 }
 
 type udiskWriter struct {

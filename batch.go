@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/docker/go-units"
-	"github.com/mattn/go-isatty"
 	"github.com/schollz/progressbar/v3"
+	"golang.org/x/term"
 
 	"github.com/oxplot/raspberrypi-archlinux-installer/disk"
 )
@@ -89,7 +89,7 @@ func runInBatchMode() error {
 		wifiPassword: os.Getenv("RAI_WIFI_PASSWORD"),
 	}
 
-	if isatty.IsTerminal(os.Stderr.Fd()) {
+	if term.IsTerminal(int(os.Stderr.Fd())) {
 
 		prog := progressbar.Default(100)
 		err = installImg(context.Background(), td, cfg, func(percent float64) {
