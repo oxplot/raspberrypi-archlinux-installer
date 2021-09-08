@@ -7,3 +7,5 @@ page](https://github.com/oxplot/raspberrypi-archlinux-installer/releases)
 and download the zip file for your OS.
 
 Once downloaded, extract and run.
+
+<img alt="Screenshot of the UI app" src="screenshot_dark.png">
